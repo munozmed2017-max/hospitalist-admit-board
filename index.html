@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admit Board</title>
+<style>
+:root{
+  --bg:#f4f5f7;--panel:#fff;--ink:#1b1f24;--muted:#6b7280;--line:#e2e5ea;
+  --accent:#1f6feb;--accent-ink:#fff;--next:#0e9f6e;--next-bg:#e6f6ef;
+  --warn:#b45309;--warn-bg:#fdf3e2;--danger:#c0362c;--danger-bg:#fbeae8;
+  --pager:#6d28d9;--pager-bg:#f1ebfd;--xfer:#0369a1;--xfer-bg:#e3f1fa;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1115;--panel:#181b21;--ink:#e7e9ee;--muted:#9aa3b2;--line:#2a2f38;
+  --accent:#4c8dff;--next:#34d399;--next-bg:#10281f;--warn:#f0b35a;--warn-bg:#2d2312;
+  --danger:#f07167;--danger-bg:#2e1614;--pager:#b79cff;--pager-bg:#231a38;--xfer:#6cc3f5;--xfer-bg:#12263a;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{font-size:18px;margin:0}
+h2{font-size:15px;margin:0 0 10px}
+.sub{color:var(--muted);font-size:12px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer;font:inherit}
+.tabs button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;text-align:center;margin-left:4px}
+main{padding:16px;max-width:1500px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1 1 160px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+textarea{min-height:60px;resize:vertical}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);padding:9px 14px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+.btn.ok{background:var(--next);color:#fff}
+.btn.bad{background:var(--danger);color:#fff}
+.btn.sm{padding:5px 9px;font-size:12px}
+.hidden{display:none!important}
+/* next-up banner */
+/* board grid */
+.board{--slot-h:132px;display:grid;grid-template-columns:repeat(var(--cols),minmax(170px,1fr));gap:8px;overflow-x:auto}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-width:170px;display:flex;flex-direction:column}
+.col.closed{opacity:.55}
+.colhead{padding:10px;border-bottom:1px solid var(--line)}
+.colhead .nm{font-weight:700}
+.colhead .meta{display:flex;justify-content:space-between;align-items:center;margin-top:4px;font-size:12px;color:var(--muted)}
+.role{font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px}
+.role.pager{background:var(--pager-bg);color:var(--pager)}
+.role.xfer{background:var(--xfer-bg);color:var(--xfer)}
+.role.closed{background:var(--danger-bg);color:var(--danger)}
+.role.next{background:var(--line);color:var(--muted)}
+.slots{padding:8px;display:flex;flex-direction:column;gap:6px;flex:1}
+.colhead{height:62px}
+/* every box is the same fixed size, filled or blank */
+.pt{height:var(--slot-h);overflow:hidden;border:1px solid var(--line);border-left:4px solid var(--line);border-radius:7px;padding:4px 5px;font-size:12px;background:var(--bg);display:flex;flex-direction:column;gap:2px}
+.pt.filled{border-left-color:var(--accent);background:var(--panel)}
+.pt.transfer{border-left-color:var(--xfer)}
+.pt input{width:100%;min-width:0;border:0;border-bottom:1px solid transparent;border-radius:3px;background:transparent;padding:1px 3px;font:inherit;font-size:12px;color:var(--ink);height:19px}
+.pt input:hover{border-bottom-color:var(--line)}
+.pt input:focus{outline:none;background:var(--bg);border-bottom-color:var(--accent)}
+.pt input::placeholder{color:var(--muted);opacity:.55}
+.pt input.k-name{font-weight:700;font-size:13px}
+.pt .r3{display:grid;grid-template-columns:1.3fr 1fr .7fr;gap:2px}
+.pt .foot{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-top:auto;color:var(--muted);font-size:11px;height:20px}
+.pt .foot{white-space:nowrap}
+.pt .foot>span{display:flex;align-items:center;gap:2px;min-width:0}
+.pt .foot input{width:62px;flex:0 0 62px;font-size:11px;color:var(--muted);height:18px;padding:0 1px}
+.pt .foot input::-webkit-calendar-picker-indicator{display:none}
+.pt .ic{border:0;background:transparent;cursor:pointer;font-size:12px;padding:0 3px;color:var(--muted);border-radius:4px}
+.pt .ic:hover{background:var(--line);color:var(--ink)}
+.pt .tag{font-size:10px;font-weight:700;color:var(--xfer)}
+.pt.night{border-left-color:var(--pager)}
+.pt:not(.filled):not(.xbox){cursor:text}
+.shiftdate{text-align:center}
+.shiftdate .big{font-size:30px;font-weight:800;letter-spacing:-.01em;line-height:1.1}
+.shiftdate .small{color:var(--muted);font-size:13px;margin-top:2px}
+.hright{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.btn.newshift{background:#16a34a;color:#fff}
+.btn.newshift:hover{background:#15803d}
+.btn.nightbtn{background:#4c1d95;color:#fff}
+.btn.nightbtn:hover{background:#3b1574}
+.btn.nightbtn.on{background:var(--pager-bg);color:var(--pager);border:1px solid var(--pager)}
+#admitterPick select{width:auto;padding:6px;font-size:12px}
+.nightlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 10px;margin:4px 0 8px}
+.nightlist label{display:flex;gap:6px;align-items:center;color:var(--ink);font-size:13px;margin:0}
+.nightlist input{width:auto}
+@media (max-width:900px){
+  header{grid-template-columns:1fr}
+  .shiftdate{order:-1}
+  .hright{align-items:stretch}
+}
+.modebar{display:flex;align-items:center;gap:6px;font-size:12px}
+/* thick black frame around what was already admitted before the night admitter took over */
+.xferdrag{cursor:grab;background:var(--panel)}
+.xferdrag:active{cursor:grabbing}
+.dragging-xfer .pt:not(.filled):not(.xbox){border-style:dashed;border-color:var(--xfer)}
+.pt.droptarget{background:var(--xfer-bg)!important;border:2px solid var(--xfer)!important}
+.dayblock{display:flex;flex-direction:column;gap:6px;outline:3px solid var(--ink);outline-offset:3px;border-radius:7px;margin:2px 0 6px}
+.billtbl input,.billtbl select{padding:5px 6px;font-size:13px}
+.billtbl td{vertical-align:middle}
+.billtbl tr.flash td{background:var(--warn-bg)}
+.codecell{display:flex;gap:4px;min-width:200px}
+.codecell select{flex:0 0 auto;width:auto}
+.missing{border-color:var(--danger)!important;color:var(--danger)}
+.modebar select{width:auto;padding:4px 6px;font-size:12px}
+.modechip{font-weight:700;padding:2px 8px;border-radius:9px;background:var(--line);color:var(--ink)}
+.modechip.night{background:var(--pager-bg);color:var(--pager)}
+.xcol{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;flex:1;padding:20px;text-align:center}
+/* queue */
+.q{border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:flex-start}
+.q .info{flex:1 1 260px}
+.q .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-block;font-size:11px;padding:1px 7px;border-radius:9px;background:var(--warn-bg);color:var(--warn);font-weight:600}
+.pill.acc{background:var(--next-bg);color:var(--next)}
+.pill.dec{background:var(--danger-bg);color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px}
+.team-row{display:grid;grid-template-columns:28px 1fr 150px 90px 80px 110px;gap:8px;align-items:center;margin-bottom:6px}
+.msg{white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none;z-index:20}
+.toast.show{opacity:1}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);max-width:560px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+@media (max-width:700px){
+  .team-row{grid-template-columns:24px 1fr;}
+  .team-row>*:nth-child(n+3){grid-column:2}
+}
+/* skip X boxes */
+.pt.xbox{cursor:pointer;justify-content:center;border-left-color:var(--danger);background:repeating-linear-gradient(135deg,transparent 0 9px,var(--danger-bg) 9px 11px);color:var(--danger)}
+.pt.xbox .n{font-size:15px}
+.pt.xbox.pending{border-style:dashed;background:var(--danger-bg)}
+.pt.xbox .t{color:var(--danger)}
+.skipbtn{border:1px solid var(--line);background:transparent;color:var(--danger);border-radius:6px;font:inherit;font-size:11px;font-weight:700;padding:1px 6px;cursor:pointer}
+.reasons{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.reasons .btn{text-align:left}
+/* paste box */
+.paste{border:2px dashed var(--accent);background:var(--bg);min-height:70px}
+.autofilled{box-shadow:0 0 0 2px var(--next);background:var(--next-bg)}
+/* end-of-day sheet (print only) */
+#printSheet{display:none}
+@page{size:letter landscape;margin:8mm}
+@media print{
+  header .tabs,.noprint{display:none!important}
+  body{background:#fff;color:#000}
+  body.sheet>*:not(#printSheet){display:none!important}
+  body.sheet #printSheet{display:block}
+  #printSheet{font:9px/1.25 -apple-system,Helvetica,Arial,sans-serif;color:#000}
+  #printSheet h1{font-size:14px;margin:0 0 2px}
+  #printSheet h2{font-size:12px;margin:10px 0 4px}
+  #printSheet .ps-sub{font-size:10px;margin-bottom:6px}
+  #printSheet table{width:100%;border-collapse:collapse;table-layout:fixed}
+  #printSheet th,#printSheet td{border:1px solid #000;padding:2px 3px;vertical-align:top;color:#000;font-size:9px}
+  #printSheet th{background:#ddd;font-size:10px;text-align:center}
+  #printSheet .cell{min-height:52px}
+  #printSheet .cell b{font-size:10px}
+  #printSheet .lbl{color:#444}
+  #printSheet td.x{background:repeating-linear-gradient(135deg,#fff 0 6px,#bbb 6px 7px);text-align:center;font-weight:700}
+  #printSheet td.off{background:linear-gradient(to top right,#fff calc(50% - 1px),#000 50%,#fff calc(50% + 1px)),linear-gradient(to bottom right,#fff calc(50% - 1px),#000 50%,#fff calc(50% + 1px))}
+  #printSheet .pb{page-break-before:always}
+  #printSheet .bill{border:2px solid #000;padding:10px 12px;margin-bottom:12px;page-break-inside:avoid;font-size:12px}
+  #printSheet .bill h1{font-size:15px;margin:0 0 8px;display:flex;justify-content:space-between}
+  #printSheet .bill table td{font-size:12px;padding:6px 8px;border:1px solid #000}
+  #printSheet .bill td.k{width:24%;background:#eee;font-weight:700}
+  #printSheet .log td,#printSheet .log th{text-align:left}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Hospitalist Admit Board</h1>
+    <div class="sub" id="shiftLabel"></div>
+  </div>
+  <div class="shiftdate"><div class="big" id="shiftBig"></div><div class="small" id="shiftSmall"></div></div>
+  <div class="hright">
+    <nav class="tabs" id="tabs">
+      <button data-v="board" class="on">Board</button>
+      <button data-v="transfer">Transfers <span class="badge hidden" id="xferBadge"></span></button>
+      <button data-v="log">Log</button>
+      <button data-v="billing">Billing <span class="badge hidden" id="billBadge"></span></button>
+      <button data-v="schedule">Schedule <span class="badge hidden" id="reqBadge"></span></button>
+      <button data-v="team">Team &amp; shift</button>
+      <button onclick="printDay()" title="Print the end-of-day sheet">🖨 Print day</button>
+    </nav>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center" class="noprint">
+      <span id="admitterPick"></span>
+      <button class="btn nightbtn" id="nightBtn" onclick="openNight()">🌙 Start night shift</button>
+      <button class="btn newshift" id="resetDay">Start new shift</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- BOARD -->
+  <section id="v-board">
+    <div class="card noprint hidden" id="staleCard" style="border-color:var(--warn);background:var(--warn-bg)">
+      <div class="row" style="align-items:center"><div id="staleMsg" style="flex:1 1 300px;color:var(--warn);font-weight:600"></div>
+      <div style="flex:0 0 auto;display:flex;gap:6px"><button class="btn ghost" onclick="printDay()">🖨 Print this sheet</button><button class="btn" onclick="resetDay.onclick()">Start new shift</button></div></div>
+    </div>
+    <div class="card noprint hidden" id="awaitingCard">
+      <h2>Accepted transfers waiting to be assigned</h2>
+      <p class="sub" style="margin-top:-6px">When the patient arrives, drag the card onto any empty box on the board, or pick a doctor and click Assign.</p>
+      <div id="awaitingList"></div>
+    </div>
+    <div class="board" id="board"></div>
+  </section>
+
+  <!-- TRANSFERS -->
+  <section id="v-transfer" class="hidden">
+    <div class="card">
+      <h2>New transfer request</h2>
+      <p class="sub" style="margin-top:-6px">For the transfer doctor. Once accepted, the patient waits in the pager holder's list until they arrive, then gets assigned in rotation.</p>
+      <form id="xferForm">
+        <label>Paste the transfer call notes here (optional). Fields fill in by themselves.</label>
+        <textarea class="paste" data-fill="xferForm" placeholder="e.g.  john doe 63 yo M from Community Hospital, NSTEMI for cath, cardiology accepted"></textarea>
+        <div class="row" style="margin-top:10px">
+          <div><label>Patient name</label><input name="name" required></div>
+          <div style="flex:0 1 90px"><label>Age</label><input name="age" inputmode="numeric"></div>
+          <div><label>Sending facility</label><input name="facility"></div>
+          <div><label>Sending doctor / phone</label><input name="sender"></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div><label>Coming for</label><input name="dx" required placeholder="Reason for transfer"></div>
+          <div><label>Consults already involved / accepted</label><input name="consults" placeholder="e.g. IR accepted, Neurosurgery aware"></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <div><label>Notes</label><input name="notes"></div>
+          <div style="flex:0 0 auto;align-self:flex-end"><button class="btn" type="submit">Add request</button></div>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h2>Transfer requests</h2>
+      <div id="xferList"></div>
+    </div>
+  </section>
+
+  <!-- LOG -->
+  <section id="v-log" class="hidden">
+    <div class="card">
+      <div class="row" style="align-items:center;margin-bottom:10px">
+        <h2 style="margin:0">Shift log</h2>
+        <div style="flex:0 0 auto" class="noprint"><button class="btn ghost sm" onclick="printDay()">Print end-of-day sheet</button> <button class="btn ghost sm" id="csvBtn">Export CSV</button></div>
+      </div>
+      <div style="overflow-x:auto"><table id="logTable"></table></div>
+    </div>
+  </section>
+
+  <!-- SCHEDULE -->
+  <section id="v-schedule" class="hidden">
+    <div class="card">
+      <div class="row" style="align-items:center;margin-bottom:8px">
+        <h2 style="margin:0;flex:1 1 220px">Schedule</h2>
+        <div style="flex:0 0 auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap" class="noprint">
+          <button class="btn ghost sm" id="wkPrev">◀</button>
+          <b id="wkLabel" style="min-width:190px;text-align:center"></b>
+          <button class="btn ghost sm" id="wkNext">▶</button>
+          <button class="btn ghost sm" id="wkToday">This week</button>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:0">Rotation runs Tuesday → Monday. Each day is <b>Pager / Transfer</b>. When a shift starts, the board sets the pager and transfer doctor from this schedule automatically.</p>
+      <div style="overflow-x:auto"><table id="schedTable" class="billtbl"></table></div>
+      <div class="row noprint" style="margin-top:10px">
+        <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn ghost sm" id="schedPasteBtn">Paste a schedule</button>
+          <button class="btn ghost sm" id="schedCopy">Copy as text</button>
+          <button class="btn ghost sm" id="schedPrint">🖨 Print</button>
+          <button class="btn ghost sm" id="schedApply">Apply today to the board</button>
+        </div>
+      </div>
+      <div id="schedPasteBox" class="hidden" style="margin-top:10px">
+        <label>Paste it the way you write it, one day per line. It fills the week shown above.</label>
+        <textarea id="schedPasteText" class="paste" placeholder="Tuesday smith/ jones&#10;Wednesday garcia/lee&#10;Thursday brown/patel&#10;Friday ..."></textarea>
+        <div class="row" style="margin-top:6px"><div style="flex:0 0 auto"><button class="btn sm" id="schedPasteGo">Fill the week</button></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Requests &amp; coverage</h2>
+      <p class="sub" style="margin-top:-6px">Ask for a day, or let everyone know someone is covering for you. Coverage changes the schedule right away; day requests wait for approval.</p>
+      <form id="reqForm">
+        <div class="row">
+          <div><label>Your name</label><input name="by" list="people" required></div>
+          <div><label>Date</label><input name="date" type="date" required></div>
+          <div><label>Request</label>
+            <select name="type" id="reqType">
+              <option value="cover">Someone is covering for me</option>
+              <option value="want-pager">I'd like to be Pager this day</option>
+              <option value="want-transfer">I'd like to be Transfer this day</option>
+              <option value="off">I can't work this day</option>
+            </select></div>
+        </div>
+        <div class="row" style="margin-top:8px" id="coverRow">
+          <div><label>Covering</label>
+            <select name="role"><option value="auto">My shift that day (pager / transfer / rounding)</option><option value="pager">Pager</option><option value="transfer">Transfer</option><option value="rounding">Rounding</option></select></div>
+          <div><label>Covered by</label><input name="coverer" list="people"></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <div><label>Note (optional)</label><input name="note"></div>
+          <div style="flex:0 0 auto;align-self:flex-end"><button class="btn" type="submit">Submit</button></div>
+        </div>
+      </form>
+      <div id="reqList" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Change history</h2>
+      <div id="schedLog" class="sub"></div>
+    </div>
+    <datalist id="people"></datalist>
+  </section>
+
+  <!-- BILLING -->
+  <section id="v-billing" class="hidden">
+    <div class="card">
+      <div class="row" style="align-items:center;margin-bottom:10px">
+        <h2 style="margin:0">Billing sheets</h2>
+        <div style="flex:0 0 auto;display:flex;gap:6px;flex-wrap:wrap" class="noprint">
+          <select id="billFilter" style="width:auto"><option value="all">All admissions</option><option value="night">🌙 Night admissions</option><option value="day">Day admissions</option></select>
+          <button class="btn" id="billPrintAll">🖨 Print billing sheets</button>
+          <button class="btn ghost" id="billCsv">Export CSV</button>
+        </div>
+      </div>
+      <p class="sub" style="margin-top:-4px">Every admission on the board gets a billing sheet. Name, MR# and diagnosis stay in sync with the board box. Pick the admission code; choose "Other" to type any code.</p>
+      <div style="overflow-x:auto"><table class="billtbl" id="billTable"></table></div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section id="v-team" class="hidden">
+    <div class="card">
+      <h2>Shift</h2>
+      <div class="row">
+        <div><label>Sheet start date (runs 7 AM → 7 AM next day)</label><input type="date" id="shiftDate"></div>
+        <div><label>Max new admits per doctor (0 = no limit)</label><input type="number" min="0" id="capInput"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Team (the rotation order is top to bottom)</h2>
+      <p class="sub" style="margin-top:-6px">Day: Pager and Transfer don't get admissions; set someone to "Closed" to take them out of the rotation. Night: after "Start night shift", the night hospitalist gives admissions to everyone with 🌙 Night checked, in the same order.</p>
+      <div id="teamList"></div>
+      <div class="row" style="margin-top:10px">
+        <div style="flex:0 0 auto"><button class="btn ghost" id="addDoc">+ Add doctor</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Demo</h2>
+      <p class="sub">Fills the board with made-up patients to try things out. Use the green Start new shift button at the top to clear it.</p>
+      <div class="row"><div style="flex:0 0 auto"><button class="btn ghost" id="loadDemo">Load demo data</button></div></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="msgDlg">
+  <h2 id="msgTitle">Message to send</h2>
+  <p class="sub">Copy this and paste it into CareAware messaging.</p>
+  <div class="msg" id="msgBody"></div>
+  <div class="row" style="margin-top:12px;justify-content:flex-end">
+    <button class="btn" style="flex:0 0 auto" id="copyBtn">Copy</button>
+    <button class="btn ghost" style="flex:0 0 auto" onclick="msgDlg.close()">Done</button>
+  </div>
+</dialog>
+
+<dialog id="nightDlg">
+  <h2>🌙 Start night shift</h2>
+  <p class="sub" style="margin-top:-4px">Everything admitted so far gets framed in black. From now on, night admissions go to the doctors checked below — not to the night hospitalists.</p>
+  <label>How many hospitalists are working the night shift?</label>
+  <select id="nightCount" style="width:auto;margin-bottom:8px"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+  <div id="nightNames"></div>
+  <label style="margin-top:10px">Night admissions go to:</label>
+  <div class="nightlist" id="nightTo"></div>
+  <div class="row" style="margin-top:12px;justify-content:space-between;align-items:center">
+    <button class="btn ghost bad-text hidden" style="flex:0 0 auto;color:var(--danger)" id="nightUndo">Cancel night shift</button>
+    <span style="flex:1"></span>
+    <button class="btn ghost" style="flex:0 0 auto" onclick="nightDlg.close()">Close</button>
+    <button class="btn nightbtn" style="flex:0 0 auto" id="nightGo">Start night shift</button>
+  </div>
+</dialog>
+
+<dialog id="skipDlg">
+  <h2 id="skipTitle">Skip</h2>
+  <p class="sub" id="skipSub"></p>
+  <div class="reasons">
+    <button class="btn ghost" data-r="Too many patients">✕ Too many patients</button>
+    <button class="btn ghost" data-r="Asked to be skipped">✕ Asked to be skipped</button>
+    <button class="btn ghost" data-r="In a procedure / code / family meeting">✕ In a procedure / code / family meeting</button>
+  </div>
+  <div class="row"><input id="skipOther" placeholder="Other reason (optional)"><button class="btn bad" style="flex:0 0 auto" data-r="">Skip with this reason</button></div>
+  <div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn ghost" style="flex:0 0 auto" onclick="skipDlg.close()">Cancel</button></div>
+</dialog>
+
+<div id="printSheet"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'admitBoard.v1';
+const uid = () => Math.random().toString(36).slice(2, 10);
+// One sheet runs 7 AM → 7 AM next day (day team, then the night admitter). Its date is the day it started.
+const SHIFT_START = 7;
+const isoDate = d => new Date(d - d.getTimezoneOffset() * 60e3).toISOString().slice(0, 10);
+const today = () => isoDate(new Date(Date.now() - SHIFT_START * 3600e3));
+const sheetStart = () => new Date(S.date + 'T' + String(SHIFT_START).padStart(2, '0') + ':00');
+function sheetRange(long) {
+  const a = sheetStart(), b = new Date(+a + 864e5);
+  const f = d => d.toLocaleDateString([], long ? {weekday:'long', month:'long', day:'numeric', year:'numeric'} : {weekday:'short', month:'short', day:'numeric'});
+  return `${f(a)} 7 AM → ${f(b)} 7 AM`;
+}
+const hhmm = ts => new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function defaultState() {
+  const names = ['Dr. A','Dr. B','Dr. C','Dr. D','Dr. E','Dr. F','Dr. G','Dr. H'];
+  return {
+    date: today(), cap: 0,
+    team: names.map((n, i) => ({id: uid(), name: n, role: i === 0 ? 'pager' : i === 1 ? 'transfer' : 'rounder', open: true})),
+    admits: [],      // {id, docId, name, mrn, age, room, dx, erdoc, loc, consults, notes, source, ts, ack}
+    transfers: [],   // {id, name, age, facility, sender, dx, consults, notes, status, ts, decidedTs, admitId}
+    skips: [],       // {id, docId, reason, ts, used, usedTs} — the "X" boxes
+    lastDocId: null, // rotation pointer
+    lastAction: null,
+  };
+}
+
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)) || defaultState(); } catch { S = defaultState(); }
+S.skips ||= [];
+delete S.mode; // old day/night override, no longer used
+let rolledOver = false;
+if (S.date !== today() && !S.admits.length && !S.transfers.length) { S.date = today(); rolledOver = true; }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} render(); }
+
+const rounders = () => S.team.filter(d => d.role === 'rounder');
+const countFor = id => S.admits.filter(a => a.docId === id).length;
+const dayCount = id => S.admits.filter(a => a.docId === id && !a.night).length;
+
+// Day: only the rounders get admits (not the pager or transfer doctor).
+// Night: starts when someone clicks "Start night shift". The night admitter(s) are not on the
+// board; they give admits to the doctors on the list who have 🌙 Night checked.
+const isNight = () => !!S.nightShift;
+const ptr = () => isNight() ? 'nightLastDocId' : 'lastDocId';
+const pool = () => isNight() ? S.team : rounders();
+const eligible = d => isNight()
+  ? d.night !== false
+  : d.role === 'rounder' && d.open && (!S.cap || dayCount(d.id) < S.cap);
+const docName = id => (S.team.find(d => d.id === id) || {}).name || '—';
+
+const pendingSkips = id => S.skips.filter(s => s.docId === id && !s.used);
+
+// Round-robin: the next eligible rounder after the last one assigned, in team order.
+// A doctor with a pending skip ("X") is passed over once when their turn comes.
+// Returns the upcoming doctors plus the skips that get used up before the first one.
+function walk(n = 3) {
+  const r = pool();
+  if (!r.length) return {out: [], passed: []};
+  const start = r.findIndex(d => d.id === S[ptr()]) + 1;
+  const pend = {};
+  S.skips.filter(s => !s.used).forEach(s => (pend[s.docId] ||= []).push(s));
+  const total = S.skips.filter(s => !s.used).length;
+  const out = [], passed = [];
+  for (let i = 0; i < r.length * (total + 1) && out.length < n; i++) {
+    const d = r[(start + i) % r.length];
+    if (!eligible(d)) continue;
+    if (pend[d.id] && pend[d.id].length) { const s = pend[d.id].shift(); if (!out.length) passed.push(s); continue; }
+    out.push(d);
+  }
+  return {out, passed};
+}
+const rotation = (n = 3) => walk(n).out;
+
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
+
+// Giving the admit to the doctor who is up advances the rotation (and uses up skips it jumped over).
+// Putting it in someone else's box is an extra for them: the rotation stays where it was.
+function assign(docId, data, source, slot) {
+  const w = walk(1);
+  const inTurn = !!w.out[0] && w.out[0].id === docId;
+  const used = inTurn ? w.passed : [];
+  const now = Date.now();
+  used.forEach(s => { s.used = true; s.usedTs = now - 1; });
+  const a = {id: uid(), docId, source, ts: now, night: isNight(), ...data};
+  if (isNight()) a.admittedBy = S.nightShift.current || S.nightShift.admitters[0];
+  if (slot != null) a.slot = slot;
+  S.admits.push(a);
+  S.lastAction = {admitId: a.id, key: ptr(), prevLast: S[ptr()], skipIds: used.map(s => s.id)};
+  if (inTurn) S[ptr()] = docId;
+  persist();
+  return a;
+}
+
+function messageFor(a) {
+  const L = [`NEW ${a.source === 'transfer' ? 'TRANSFER ' : ''}ADMISSION → ${docName(a.docId)}`,
+    `Pt: ${a.name}${a.age ? ', ' + a.age + 'y' : ''}${a.mrn ? '  MR# ' + a.mrn : ''}`,
+    a.room ? `Location: ${a.room}` : '',
+    `Dx: ${a.dx}${a.loc ? '  (' + a.loc + ')' : ''}`,
+    a.erdoc ? `ER Dr: ${a.erdoc}` : '',
+    a.facility ? `From: ${a.facility}` : '',
+    a.consults ? `Consults: ${a.consults}` : '',
+    a.notes ? `Notes: ${a.notes}` : '',
+    `Time: ${hhmm(a.ts)}`];
+  return L.filter(Boolean).join('\n');
+}
+
+function showMessage(a) {
+  msgTitle.textContent = `Assigned to ${docName(a.docId)}`;
+  msgBody.textContent = messageFor(a);
+  msgDlg.showModal();
+}
+
+function toast(t) { const el = document.getElementById('toast'); el.textContent = t; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 1800); }
+
+/* ---------- rendering ---------- */
+function render() {
+  const night = isNight();
+  renderNightHeader();
+  const st = sheetStart(), en = new Date(+st + 864e5);
+  shiftBig.textContent = st.toLocaleDateString([], {weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'});
+  shiftSmall.textContent = `Shift 7 AM → ${en.toLocaleDateString([], {weekday: 'short', month: 'short', day: 'numeric'})} 7 AM${night ? ` · 🌙 Night shift since ${hhmm(S.nightShift.start)}` : ''}`;
+  shiftLabel.textContent = `${S.admits.length} admission${S.admits.length === 1 ? '' : 's'}`;
+  const stale = S.date !== today();
+  staleCard.classList.toggle('hidden', !stale);
+  if (stale) staleMsg.textContent = `It's past 7 AM. This sheet is for ${sheetRange()}. Print it, then start the new shift.`;
+  const pend = S.transfers.filter(t => t.status === 'pending').length;
+  xferBadge.textContent = pend; xferBadge.classList.toggle('hidden', !pend);
+  renderBoard(); renderTransfers(); renderLog(); renderBilling(); renderSchedule(); renderTeam();
+}
+
+function renderBoard() {
+  const rot = rotation(3);
+  const next = rot[0];
+
+  const layouts = Object.fromEntries(S.team.map(d => [d.id, columnLayout(d.id)]));
+  const framed = isNight();
+  const rows = Math.max(8, ...S.team.map(d => layouts[d.id].length + 1));
+  board.style.setProperty('--cols', S.team.length);
+  board.innerHTML = S.team.map(d => {
+    const list = S.admits.filter(a => a.docId === d.id);
+    const nightN = list.filter(a => a.night).length;
+    const grid = layouts[d.id];
+    let tag = '';
+    if (next && next.id === d.id) tag = '<span class="role next">NEXT</span>';
+    else if (!isNight() && d.role === 'pager') tag = '<span class="role pager">PAGER</span>';
+    else if (!isNight() && d.role === 'transfer') tag = '<span class="role xfer">TRANSFER</span>';
+    else if (!eligible(d)) tag = `<span class="role closed">${isNight() || !d.open ? 'CLOSED' : 'CAPPED'}</span>`;
+    const isNext = next && next.id === d.id;
+    const nextSlot = isNext ? Array.from({length: rows}, (_, i) => i).find(i => !grid[i]) : -1;
+    const dEnd = dayEnd(grid);
+    // Pager / transfer doctors also get boxes so they can take an admission themselves;
+    // the day rotation still never picks them.
+    const body = `<div class="slots">${Array.from({length: rows}, (_, i) => {
+          const e = grid[i];
+          const open = framed && dEnd && i === 0 ? '<div class="dayblock" title="Admitted before the night shift">' : '';
+          const close = framed && dEnd && i === dEnd - 1 ? '</div>' : '';
+          return open + boxHTML(e, i) + close;
+        }).join('')}</div>`;
+    function boxHTML(e, i) {
+          if (e && e.reason !== undefined) return `
+          <div class="pt xbox ${e.used ? '' : 'pending'}" onclick="removeSkip('${e.id}')" title="Click to remove this skip">
+            <div class="n">✕ ${e.used ? 'Skipped' : 'Skip next turn'}</div>
+            <div>${esc(e.reason)}</div>
+            <div class="sub" style="color:inherit">${hhmm(e.used ? e.usedTs : e.ts)}${e.used ? '' : ' · pending'}</div>
+          </div>`;
+          return slotHTML(d.id, i, e, i === nextSlot);
+    }
+    return `<div class="col ${isNext ? 'isnext' : ''} ${!eligible(d) && (isNight() || d.role === 'rounder') ? 'closed' : ''}">
+      <div class="colhead"><div class="nm" style="display:flex;justify-content:space-between;gap:6px">${esc(d.name)}
+        ${isNight() || d.role === 'rounder' ? `<button class="skipbtn noprint" onclick="openSkip('${d.id}')" title="Skip this doctor on their next turn">✕ Skip</button>` : ''}</div>
+      <div class="meta"><span>${list.length + (S.cap && !isNight() && d.role === 'rounder' ? '/' + S.cap : '') + ' admits' + (nightN ? ` · 🌙${nightN}` : '')}</span>${tag}</div></div>
+      ${body}</div>`;
+  }).join('');
+
+  const waiting = S.transfers.filter(t => t.status === 'accepted' && !t.admitId);
+  awaitingCard.classList.toggle('hidden', !waiting.length);
+  awaitingList.innerHTML = waiting.map(t => `
+    <div class="q xferdrag" draggable="true" data-xfer="${t.id}" title="Drag onto any empty box, or pick a doctor"><div class="info"><b>${esc(t.name)}</b>${t.age ? ', ' + esc(t.age) : ''} — ${esc(t.dx)}
+      <div class="sub">From ${esc(t.facility || '?')} · accepted ${hhmm(t.decidedTs)}${t.consults ? ' · Consults: ' + esc(t.consults) : ''}</div></div>
+      <div class="acts">${assignPicker(t)}</div></div>`).join('');
+}
+
+function renderTransfers() {
+  const order = {pending: 0, accepted: 1, declined: 2};
+  const list = [...S.transfers].sort((a, b) => order[a.status] - order[b.status] || b.ts - a.ts);
+  xferList.innerHTML = list.length ? list.map(t => `
+    <div class="q"><div class="info">
+      <b>${esc(t.name)}</b>${t.age ? ', ' + esc(t.age) : ''} &nbsp;
+      <span class="pill ${t.status === 'accepted' ? 'acc' : t.status === 'declined' ? 'dec' : ''}">${t.status.toUpperCase()}${t.admitId ? ' → ' + esc(docName((S.admits.find(a => a.id === t.admitId) || {}).docId)) : ''}</span>
+      <div><b>Coming for:</b> ${esc(t.dx)}</div>
+      ${t.consults ? `<div><b>Consults:</b> ${esc(t.consults)}</div>` : ''}
+      <div class="sub">${esc(t.facility || '')}${t.sender ? ' · ' + esc(t.sender) : ''} · called ${hhmm(t.ts)}${t.notes ? ' · ' + esc(t.notes) : ''}</div></div>
+      <div class="acts">${t.status === 'pending'
+        ? `<button class="btn ok sm" onclick="decide('${t.id}','accepted')">Accept</button><button class="btn bad sm" onclick="decide('${t.id}','declined')">Decline</button>`
+        : t.status === 'accepted' && !t.admitId ? assignPicker(t) : ''}</div></div>`).join('')
+    : '<p class="sub">No transfer requests yet.</p>';
+}
+
+function renderLog() {
+  const rows = [...S.admits].sort((a, b) => a.ts - b.ts);
+  logTable.innerHTML = `<tr><th>Time</th><th>Doctor</th><th>Patient</th><th>MR#</th><th>Age</th><th>Room</th><th>Dx</th><th>Source</th><th>Consults / notes</th><th class="noprint"></th></tr>` +
+    (rows.length ? rows.map(a => `<tr><td>${hhmm(a.ts)}</td><td>${esc(docName(a.docId))}</td><td>${esc(a.name)}</td><td>${esc(a.mrn)}</td><td>${esc(a.age)}</td><td>${esc(a.room)}</td><td>${esc(a.dx)}</td><td>${a.source === 'transfer' ? 'Transfer' : 'ER'}${a.night ? ' 🌙' : ''}</td><td>${esc(a.notes)}</td>
+      <td class="noprint"><button class="btn ghost sm" onclick="reassign('${a.id}')">Reassign</button> <button class="btn ghost sm" onclick="resend('${a.id}')">Message</button></td></tr>`).join('')
+    : '<tr><td colspan="10" class="sub">No admissions yet this shift.</td></tr>');
+}
+
+function renderTeam() {
+  shiftDate.value = S.date; capInput.value = S.cap;
+  teamList.innerHTML = S.team.map((d, i) => `
+    <div class="team-row">
+      <span class="sub">${i + 1}.</span>
+      <input value="${esc(d.name)}" onchange="setDoc('${d.id}','name',this.value)">
+      <select onchange="setDoc('${d.id}','role',this.value)">
+        <option value="rounder" ${d.role === 'rounder' ? 'selected' : ''}>Rounder (gets admits)</option>
+        <option value="pager" ${d.role === 'pager' ? 'selected' : ''}>Pager holder</option>
+        <option value="transfer" ${d.role === 'transfer' ? 'selected' : ''}>Transfer doctor</option>
+      </select>
+      <select onchange="setDoc('${d.id}','open',this.value==='1')" ${d.role !== 'rounder' ? 'disabled' : ''}>
+        <option value="1" ${d.open ? 'selected' : ''}>Open</option><option value="0" ${!d.open ? 'selected' : ''}>Closed</option>
+      </select>
+      <label style="display:flex;gap:4px;align-items:center;margin:0;color:var(--ink)" title="Gets admissions from the night admitter">
+        <input type="checkbox" style="width:auto" ${d.night !== false ? 'checked' : ''} onchange="setDoc('${d.id}','night',this.checked)"> 🌙 Night</label>
+      <div style="display:flex;gap:4px">
+        <button class="btn ghost sm" onclick="moveDoc('${d.id}',-1)" title="Move up">↑</button>
+        <button class="btn ghost sm" onclick="moveDoc('${d.id}',1)" title="Move down">↓</button>
+        <button class="btn ghost sm" onclick="removeDoc('${d.id}')" title="Remove">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+/* ---------- actions ---------- */
+function go(v) {
+  document.querySelectorAll('main>section').forEach(s => s.classList.toggle('hidden', s.id !== 'v-' + v));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  try { sessionStorage.setItem('admitBoard.tab', v); } catch {}
+  window.scrollTo(0, 0);
+}
+tabs.onclick = e => { const b = e.target.closest('button'); if (b && b.dataset.v) { go(b.dataset.v); if (b.dataset.v === 'billing') renderBilling(); } };
+
+xferForm.onsubmit = e => {
+  e.preventDefault();
+  S.transfers.push({id: uid(), status: 'pending', ts: Date.now(), ...Object.fromEntries(new FormData(xferForm))});
+  xferForm.reset(); save(); toast('Transfer request added');
+};
+
+function decide(id, status) { const t = S.transfers.find(t => t.id === id); t.status = status; t.decidedTs = Date.now(); save(); toast('Transfer ' + status); }
+
+// The pager picks who gets the transfer (dropdown, or drag the card onto any empty box).
+function assignTransfer(id, docId, slot) {
+  const t = S.transfers.find(t => t.id === id);
+  if (!t || t.admitId) return;
+  if (!docId) return toast('Choose a doctor first');
+  const notes = [t.facility && 'From ' + t.facility, t.consults && 'Consults: ' + t.consults, t.notes].filter(Boolean).join(' · ');
+  const a = assign(docId, {name: t.name, age: t.age, dx: t.dx, facility: t.facility, notes}, 'transfer', slot);
+  t.admitId = a.id; save(); toast(`${t.name} → ${docName(docId)}`);
+}
+const docOptions = () => `<option value="">Assign to…</option>` + S.team.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+const assignPicker = t => `<span style="display:flex;gap:6px;align-items:center">
+  <select id="pick-${t.id}" style="width:auto">${docOptions()}</select>
+  <button class="btn sm" onclick="assignTransfer('${t.id}', document.getElementById('pick-${t.id}').value)">Assign</button></span>`;
+
+// drag a waiting transfer onto any empty box on the board
+document.addEventListener('dragstart', e => {
+  const c = e.target.closest && e.target.closest('[data-xfer]'); if (!c) return;
+  e.dataTransfer.setData('text/x-transfer', c.dataset.xfer); e.dataTransfer.effectAllowed = 'move';
+  document.body.classList.add('dragging-xfer');
+});
+document.addEventListener('dragend', () => { document.body.classList.remove('dragging-xfer'); board.querySelectorAll('.droptarget').forEach(el => el.classList.remove('droptarget')); });
+board.addEventListener('dragover', e => {
+  if (!e.dataTransfer.types.includes('text/x-transfer')) return;
+  const box = e.target.closest('.pt:not(.filled):not(.xbox)'); if (!box) return;
+  e.preventDefault();
+  board.querySelectorAll('.droptarget').forEach(el => el !== box && el.classList.remove('droptarget'));
+  box.classList.add('droptarget');
+});
+board.addEventListener('drop', e => {
+  const id = e.dataTransfer.getData('text/x-transfer');
+  const box = e.target.closest('.pt:not(.filled):not(.xbox)');
+  if (!id || !box) return;
+  e.preventDefault();
+  assignTransfer(id, box.dataset.doc, +box.dataset.i);
+});
+
+/* ---------- editing boxes directly on the board ---------- */
+const pad = n => String(n).padStart(2, '0');
+const timeVal = ts => { const d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const FIELDS = ['name', 'mrn', 'room', 'age', 'dx', 'notes'];
+
+function slotHTML(docId, i, a, isNextSlot) {
+  a = a || {};
+  const v = k => esc(a[k] || '');
+  const inp = (k, ph, cls = '') => `<input data-k="${k}" class="k-${k} ${cls}" value="${v(k)}" placeholder="${ph}" title="${v(k)}" autocomplete="off">`;
+  return `<div class="pt ${a.id ? 'filled' : ''} ${a.source === 'transfer' ? 'transfer' : ''} ${a.night ? 'night' : ''} ${isNextSlot ? 'nextslot' : ''}" data-doc="${docId}" data-i="${i}" data-id="${a.id || ''}">
+    ${inp('name', isNextSlot ? 'Type or paste here' : 'Name')}
+    <div class="r3">${inp('mrn', 'MR#')}${inp('room', 'RM#')}${inp('age', 'Age')}</div>
+    ${inp('dx', 'DX')}
+    ${inp('notes', 'Consults / notes')}
+    <div class="foot">${a.id
+      ? `<span title="Time of call">🕒<input type="time" data-k="time" value="${timeVal(a.ts)}">${a.night ? '<span title="Night admission">🌙</span>' : ''}${a.source === 'transfer' ? '<span class="tag">XFER</span>' : ''}</span>
+         <span class="noprint"><button class="ic" data-act="bill" title="Billing sheet${a.code ? ': ' + esc(codeLabel(a)) : ' (no code yet)'}">${a.code ? '💲' : '<span style="opacity:.45">💲</span>'}</button><button class="ic" data-act="copy" title="Copy message for CareAware">📋</button><button class="ic" data-act="del" title="Delete this admission">✕</button></span>`
+      : '<span>Time of call</span>'}</div>
+  </div>`;
+}
+
+// Creates the admission the first time someone types into an empty box.
+function ensureAdmit(slot) {
+  let a = S.admits.find(x => x.id === slot.dataset.id);
+  if (a) return a;
+  a = assign(slot.dataset.doc, {}, 'er', +slot.dataset.i);
+  slot.dataset.id = a.id;
+  slot.classList.add('filled');
+  return a;
+}
+
+board.addEventListener('input', e => {
+  const inp = e.target.closest('.pt input[data-k]'); if (!inp) return;
+  const slot = inp.closest('.pt'), a = ensureAdmit(slot), k = inp.dataset.k;
+  if (k === 'time') {
+    const [h, m] = inp.value.split(':').map(Number);
+    if (!isNaN(h)) { const d = sheetStart(); if (h < SHIFT_START) d.setDate(d.getDate() + 1); d.setHours(h, m || 0, 0, 0); a.ts = d.getTime(); }
+  } else { a[k] = inp.value; inp.title = inp.value; }
+  persist();
+});
+
+// Pasting a whole ER message into any field of a box splits it into the right fields.
+board.addEventListener('paste', e => {
+  const inp = e.target.closest('.pt input[data-k]'); if (!inp || inp.dataset.k === 'time') return;
+  const text = (e.clipboardData || window.clipboardData).getData('text');
+  if (text.trim().split(/[\s,;]+/).length < 3 || !/\d/.test(text)) return; // looks like a single value; paste normally
+  e.preventDefault();
+  const p = parseMessage(text);
+  const slot = inp.closest('.pt'), a = ensureAdmit(slot);
+  const notes = [p.consults && 'Consults: ' + p.consults, p.loc, p.erdoc && 'ER ' + p.erdoc, p.notes].filter(Boolean).join(' · ');
+  Object.assign(a, {name: p.name || a.name || '', mrn: p.mrn || a.mrn || '', room: p.room || a.room || '', age: p.age || a.age || '', dx: p.dx || a.dx || '', notes: notes || a.notes || ''});
+  persist();
+  FIELDS.forEach(k => { const el = slot.querySelector(`[data-k="${k}"]`); el.value = a[k] || ''; el.title = el.value; });
+  toast('Filled from pasted message — check it');
+});
+
+board.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('.pt input')) e.target.blur();
+});
+
+board.addEventListener('click', e => {
+  const box = e.target.closest('.pt:not(.xbox)');
+  if (box && !e.target.closest('input,button')) { box.querySelector('input[data-k="name"]').focus(); return; }
+  const b = e.target.closest('.pt [data-act]'); if (!b) return;
+  const a = S.admits.find(x => x.id === b.closest('.pt').dataset.id); if (!a) return;
+  if (b.dataset.act === 'copy') copyText(messageFor(a));
+  if (b.dataset.act === 'bill') openBilling(a.id);
+  if (b.dataset.act === 'del' && confirm(`Delete ${a.name || 'this admission'} from ${docName(a.docId)}?`)) { deleteAdmit(a.id); save(); }
+});
+
+// When focus leaves a box: drop it if it was left blank, then redraw (keeping focus where the user went).
+board.addEventListener('focusout', e => {
+  const slot = e.target.closest('.pt'); if (!slot) return;
+  const to = e.relatedTarget;
+  if (to && slot.contains(to)) return;
+  const a = S.admits.find(x => x.id === slot.dataset.id);
+  if (a && !FIELDS.some(k => (a[k] || '').trim())) deleteAdmit(a.id);
+  let restore = null;
+  if (to && to.closest && to.closest('.pt')) {
+    const ts = to.closest('.pt');
+    restore = {id: ts.dataset.id, doc: ts.dataset.doc, i: ts.dataset.i, k: to.dataset.k};
+  }
+  save();
+  if (restore) {
+    const sel = restore.id ? `.pt[data-id="${restore.id}"]` : `.pt[data-doc="${restore.doc}"][data-i="${restore.i}"]`;
+    const el = board.querySelector(`${sel} [data-k="${restore.k}"]`);
+    if (el) el.focus();
+  }
+});
+
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); toast('Copied — paste it into CareAware'); }
+  catch { msgTitle.textContent = 'Message to send'; msgBody.textContent = t; msgDlg.showModal(); }
+}
+
+/* ---------- day block (what the night admitter sees as already done) ---------- */
+const isNightTs = ts => !!S.nightShift && ts >= S.nightShift.start;
+const isDayEntry = e => e && (e.reason !== undefined ? e.used && !isNightTs(e.usedTs) : !e.night);
+// Number of boxes from the top of a column through its last day admission (0 if none).
+function dayEnd(grid) { let end = 0; grid.forEach((e, i) => { if (isDayEntry(e)) end = i + 1; }); return end; }
+
+/* ---------- billing ---------- */
+const CODES = [
+  ['99221', 'Initial hospital care — low/straightforward'],
+  ['99222', 'Initial hospital care — moderate'],
+  ['99223', 'Initial hospital care — high'],
+  ['99291', 'Critical care, first 30–74 min'],
+  ['99234', 'Same-day admit/discharge — low'],
+  ['99235', 'Same-day admit/discharge — moderate'],
+  ['99236', 'Same-day admit/discharge — high'],
+];
+const dosOf = a => a.dos || isoDate(new Date(a.ts));
+const codeLabel = a => a.code === 'other' ? (a.codeOther || 'Other') : (a.code || '');
+const billRows = () => {
+  const f = billFilter.value;
+  return [...S.admits].filter(a => f === 'all' || (f === 'night') === !!a.night).sort((a, b) => a.ts - b.ts);
+};
+const fmtDate = iso => new Date(iso + 'T12:00').toLocaleDateString([], {month: '2-digit', day: '2-digit', year: 'numeric'});
+
+function renderBilling() {
+  const missing = S.admits.filter(a => !codeLabel(a)).length;
+  billBadge.textContent = missing; billBadge.classList.toggle('hidden', !missing);
+  const rows = billRows();
+  billTable.innerHTML = `<tr><th>Date of service</th><th>Patient name</th><th>MR#</th><th>Admission code</th><th>Diagnosis for admission</th><th>Assigned to</th><th class="noprint"></th></tr>` +
+    (rows.length ? rows.map(a => `<tr data-id="${a.id}">
+      <td><input type="date" data-b="dos" value="${dosOf(a)}"></td>
+      <td><div style="display:flex;gap:4px;align-items:center"><input data-b="name" value="${esc(a.name)}" placeholder="Name">${a.night ? '<span title="Night admission">🌙</span>' : ''}</div></td>
+      <td><input data-b="mrn" value="${esc(a.mrn)}" placeholder="MR#" style="width:110px"></td>
+      <td><div class="codecell"><select data-b="code" class="${codeLabel(a) ? '' : 'missing'}">
+          <option value="">— choose —</option>
+          ${CODES.map(([c, t]) => `<option value="${c}" ${a.code === c ? 'selected' : ''} title="${t}">${c}</option>`).join('')}
+          <option value="other" ${a.code === 'other' ? 'selected' : ''}>Other…</option></select>
+        ${a.code === 'other' ? `<input data-b="codeOther" value="${esc(a.codeOther)}" placeholder="Type code" style="width:100px">` : ''}</div></td>
+      <td><input data-b="dx" value="${esc(a.dx)}" placeholder="Diagnosis"></td>
+      <td><select data-b="docId">${S.team.map(d => `<option value="${d.id}" ${d.id === a.docId ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</select></td>
+      <td class="noprint"><button class="btn ghost sm" onclick="printBilling(['${a.id}'])">🖨</button></td></tr>`).join('')
+    : '<tr><td colspan="7" class="sub">No admissions yet.</td></tr>');
+}
+
+billTable.addEventListener('change', e => {
+  const el = e.target.closest('[data-b]'); if (!el) return;
+  const a = S.admits.find(x => x.id === el.closest('tr').dataset.id); if (!a) return;
+  const k = el.dataset.b;
+  if (k === 'docId' && a.docId !== el.value) delete a.slot; // moves to the other doctor's first free box
+  a[k] = el.value;
+  save();
+});
+billFilter.onchange = renderBilling;
+
+function openBilling(id) {
+  billFilter.value = 'all';
+  go('billing'); renderBilling();
+  const tr = billTable.querySelector(`tr[data-id="${id}"]`);
+  if (tr) { tr.classList.add('flash'); tr.scrollIntoView({block: 'center'}); (tr.querySelector('[data-b="code"]') || tr).focus(); setTimeout(() => tr.classList.remove('flash'), 2500); }
+}
+
+function printBilling(ids) {
+  const list = ids.map(id => S.admits.find(a => a.id === id)).filter(Boolean);
+  if (!list.length) return toast('No admissions to print');
+  const row = (k, v) => `<tr><td class="k">${k}</td><td>${v || '&nbsp;'}</td></tr>`;
+  printSheet.innerHTML = list.map(a => `
+    <div class="bill">
+      <h1><span>Admission Billing Sheet</span><span style="font-weight:400;font-size:12px">${a.night ? 'Night admission' : 'Day admission'} · call ${hhmm(a.ts)}</span></h1>
+      <table>
+        ${row('Patient name', esc(a.name))}
+        ${row('MR#', esc(a.mrn))}
+        ${row('Date of service', fmtDate(dosOf(a)))}
+        ${row('Admission code', a.code === 'other' ? 'Other: ' + esc(a.codeOther) : a.code ? `${a.code} — ${(CODES.find(c => c[0] === a.code) || [])[1] || ''}` : '')}
+        ${row('Diagnosis for admission', esc(a.dx))}
+        ${row('Assigned to', esc(docName(a.docId)))}
+        ${a.admittedBy ? row('Admitted by (night)', esc(a.admittedBy)) : ''}
+      </table>
+    </div>`).join('');
+  document.body.classList.add('sheet');
+  window.print();
+}
+billPrintAll.onclick = () => printBilling(billRows().map(a => a.id));
+billCsv.onclick = () => {
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = ['date_of_service,patient,mrn,code,diagnosis,assigned_to,night,admitted_by'].concat(billRows().map(a =>
+    [dosOf(a), a.name, a.mrn, codeLabel(a), a.dx, docName(a.docId), a.night ? 'yes' : 'no', a.admittedBy || ''].map(q).join(','))).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+  Object.assign(document.createElement('a'), {href: url, download: `billing-${S.date}.csv`}).click();
+};
+
+/* ---------- schedule (pager / transfer, Tuesday → Monday) ---------- */
+S.schedule ||= {};   // 'YYYY-MM-DD' → {pager, transfer}
+S.requests ||= [];   // {id, ts, by, date, type, role, coverer, note, status}
+S.schedLog ||= [];   // {ts, text}
+const DAYN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00'); d.setDate(d.getDate() + n); return isoDate(d); };
+const weekStartOf = iso => { const d = new Date(iso + 'T12:00'); return addDays(iso, -((d.getDay() - 2 + 7) % 7)); }; // Tuesday
+const weekDays = start => Array.from({length: 7}, (_, i) => addDays(start, i));
+const shortDate = iso => new Date(iso + 'T12:00').toLocaleDateString([], {weekday: 'short', month: 'numeric', day: 'numeric'});
+const normName = n => String(n || '').toLowerCase().replace(/\bdr\b\.?/g, '').replace(/[^a-z ]/g, ' ').trim().replace(/\s+/g, ' ');
+const lastName = n => normName(n).split(' ').pop();
+const sameDoc = (a, b) => !!normName(a) && !!normName(b) && (normName(a) === normName(b) || lastName(a) === lastName(b));
+const niceName = n => n.trim().replace(/\s+/g, ' ').replace(/\b([a-z])/g, c => c.toUpperCase());
+let viewWeek = weekStartOf(today());
+const slot = iso => (S.schedule[iso] ||= {pager: '', transfer: ''});
+const logSched = text => S.schedLog.unshift({ts: Date.now(), text});
+
+function renderSchedule() {
+  const days = weekDays(viewWeek);
+  wkLabel.textContent = `${shortDate(days[0])} → ${shortDate(days[6])}`;
+  const pend = S.requests.filter(r => r.status === 'pending').length;
+  reqBadge.textContent = pend; reqBadge.classList.toggle('hidden', !pend);
+  const names = new Set([...S.team.map(d => d.base || d.name)]);
+  Object.values(S.schedule).forEach(v => { v.pager && names.add(v.pager); v.transfer && names.add(v.transfer); });
+  people.innerHTML = [...names].filter(Boolean).sort().map(n => `<option value="${esc(n)}">`).join('');
+  schedTable.innerHTML = `<tr><th>Day</th><th>Pager</th><th>Transfer</th><th>Coverage / requests</th></tr>` + days.map(iso => {
+    const v = S.schedule[iso] || {};
+    const notes = S.requests.filter(r => r.date === iso && r.status !== 'declined').map(r =>
+      r.type === 'cover' ? `${esc(r.coverer)} covering ${esc(r.by)}${r.role && r.role !== 'auto' ? ' (' + r.role + ')' : ''}`
+      : r.type === 'off' ? `${esc(r.by)} can't work${r.status === 'pending' ? ' (pending)' : ''}`
+      : `${esc(r.by)} wants ${r.type === 'want-pager' ? 'pager' : 'transfer'}${r.status === 'pending' ? ' (pending)' : ''}`).join(' · ');
+    const isToday = iso === S.date;
+    return `<tr data-day="${iso}" style="${isToday ? 'font-weight:700' : ''}">
+      <td style="white-space:nowrap">${isToday ? '▶ ' : ''}${DAYN[new Date(iso + 'T12:00').getDay()]} <span class="sub">${new Date(iso + 'T12:00').toLocaleDateString([], {month: 'numeric', day: 'numeric'})}</span></td>
+      <td><input data-s="pager" list="people" value="${esc(v.pager)}" placeholder="Pager"></td>
+      <td><input data-s="transfer" list="people" value="${esc(v.transfer)}" placeholder="Transfer"></td>
+      <td class="sub" style="font-weight:400">${notes}</td></tr>`;
+  }).join('');
+  if (!reqForm.date.value) reqForm.date.value = days[0];
+  reqList.innerHTML = S.requests.length ? [...S.requests].sort((a, b) => b.ts - a.ts).map(r => `
+    <div class="q"><div class="info">
+      <b>${esc(r.by)}</b> · ${shortDate(r.date)} · ${
+        r.type === 'cover' ? `covered by <b>${esc(r.coverer)}</b>${r.role && r.role !== 'auto' ? ' (' + r.role + ')' : ''}`
+        : r.type === 'off' ? "can't work this day" : `would like to be <b>${r.type === 'want-pager' ? 'Pager' : 'Transfer'}</b>`}
+      &nbsp;<span class="pill ${r.status === 'declined' ? 'dec' : r.status === 'pending' ? '' : 'acc'}">${r.status.toUpperCase()}</span>
+      ${r.note ? `<div class="sub">${esc(r.note)}</div>` : ''}
+      <div class="sub">${new Date(r.ts).toLocaleString([], {month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'})}${r.applied ? ' · ' + esc(r.applied) : ''}</div></div>
+      <div class="acts">${r.status === 'pending'
+        ? `<button class="btn sm" onclick="decideReq('${r.id}', true)">Approve</button><button class="btn bad sm" onclick="decideReq('${r.id}', false)">Decline</button>`
+        : r.undo ? `<button class="btn ghost sm" onclick="undoReq('${r.id}')">Undo</button>` : ''}</div></div>`).join('')
+    : '<p class="sub">No requests yet.</p>';
+  schedLog.innerHTML = S.schedLog.length ? S.schedLog.slice(0, 40).map(l => `<div>${new Date(l.ts).toLocaleString([], {month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit'})} — ${esc(l.text)}</div>`).join('') : 'No changes yet.';
+}
+
+schedTable.addEventListener('change', e => {
+  const el = e.target.closest('[data-s]'); if (!el) return;
+  const iso = el.closest('tr').dataset.day, k = el.dataset.s, v = el.value.trim() ? niceName(el.value) : '';
+  const old = slot(iso)[k];
+  if (old === v) return;
+  slot(iso)[k] = v;
+  logSched(`${shortDate(iso)} ${k}: ${old || '—'} → ${v || '—'}`);
+  if (iso === S.date) applySchedule(true);
+  save();
+});
+wkPrev.onclick = () => { viewWeek = addDays(viewWeek, -7); renderSchedule(); };
+wkNext.onclick = () => { viewWeek = addDays(viewWeek, 7); renderSchedule(); };
+wkToday.onclick = () => { viewWeek = weekStartOf(today()); renderSchedule(); };
+reqType.onchange = () => coverRow.classList.toggle('hidden', reqType.value !== 'cover');
+schedPasteBtn.onclick = () => schedPasteBox.classList.toggle('hidden');
+
+// "Tuesday smith/ jones" → that day of the shown week
+schedPasteGo.onclick = () => {
+  const days = weekDays(viewWeek); let n = 0;
+  schedPasteText.value.split(/\n+/).forEach(line => {
+    const m = line.match(/^\s*(mon|tue|wed|thu|fri|sat|sun)[a-z]*\.?\s*[:\-]?\s*([^\/]*?)\s*\/\s*(.*?)\s*$/i);
+    if (!m) return;
+    const iso = days.find(d => DAYN[new Date(d + 'T12:00').getDay()].toLowerCase().startsWith(m[1].toLowerCase()));
+    if (!iso) return;
+    S.schedule[iso] = {pager: m[2] ? niceName(m[2]) : '', transfer: m[3] ? niceName(m[3]) : ''};
+    n++;
+  });
+  if (!n) return toast('No lines like "Tuesday smith/jones" found');
+  logSched(`Schedule pasted for week of ${shortDate(days[0])} (${n} days)`);
+  schedPasteText.value = ''; schedPasteBox.classList.add('hidden');
+  if (days.includes(S.date)) applySchedule(true);
+  save(); toast(`Filled ${n} days`);
+};
+schedCopy.onclick = () => {
+  const days = weekDays(viewWeek);
+  copyText(`Schedule ${shortDate(days[0])} – ${shortDate(days[6])}\n` + days.map(iso => {
+    const v = S.schedule[iso] || {};
+    return `${DAYN[new Date(iso + 'T12:00').getDay()]} ${v.pager || '—'}/${v.transfer || '—'}`;
+  }).join('\n'));
+};
+schedPrint.onclick = () => {
+  const days = weekDays(viewWeek);
+  printSheet.innerHTML = `<h1>Schedule: ${shortDate(days[0])} → ${shortDate(days[6])}</h1>
+    <table class="log"><tr><th style="width:22%">Day</th><th>Pager</th><th>Transfer</th><th style="width:35%">Coverage</th></tr>
+    ${days.map(iso => { const v = S.schedule[iso] || {}; return `<tr><td>${DAYN[new Date(iso + 'T12:00').getDay()]} ${new Date(iso + 'T12:00').toLocaleDateString([], {month: 'numeric', day: 'numeric'})}</td><td>${esc(v.pager)}</td><td>${esc(v.transfer)}</td>
+      <td>${S.requests.filter(r => r.date === iso && r.type === 'cover' && r.status === 'applied').map(r => `${esc(r.coverer)} for ${esc(r.by)}`).join(', ')}</td></tr>`; }).join('')}</table>`;
+  document.body.classList.add('sheet'); window.print();
+};
+schedApply.onclick = () => { applySchedule(false); save(); };
+
+reqForm.onsubmit = e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(reqForm));
+  const r = {id: uid(), ts: Date.now(), by: niceName(f.by), date: f.date, type: f.type, note: f.note.trim(), status: 'pending'};
+  if (r.type === 'cover') {
+    if (!f.coverer.trim()) return toast('Who is covering?');
+    Object.assign(r, {coverer: niceName(f.coverer), role: f.role});
+  }
+  S.requests.push(r);
+  if (r.type === 'cover') applyCover(r);   // coverage takes effect right away
+  reqForm.reset(); reqType.onchange();
+  viewWeek = weekStartOf(r.date);
+  save(); toast(r.type === 'cover' ? 'Coverage recorded and schedule updated' : 'Request sent');
+};
+
+// Put the coverer in the person's place on that day.
+function applyCover(r) {
+  const v = slot(r.date), changed = [];
+  ['pager', 'transfer'].forEach(k => {
+    if ((r.role === k || (r.role === 'auto' && sameDoc(v[k], r.by))) && v[k] !== r.coverer) {
+      changed.push({k, old: v[k]}); v[k] = r.coverer;
+    }
+  });
+  if (r.role === 'pager' || r.role === 'transfer' || changed.length) r.coverRole = changed.map(c => c.k).join(', ') || r.role;
+  else r.coverRole = 'rounding';
+  r.undo = changed;
+  r.status = 'applied';
+  r.applied = changed.length ? changed.map(c => `${c.k}: ${c.old || '—'} → ${r.coverer}`).join('; ') : `${r.coverer} rounds in place of ${r.by}`;
+  logSched(`${shortDate(r.date)}: ${r.coverer} covering ${r.by} — ${r.applied}`);
+  if (r.date === S.date) applySchedule(true);
+}
+function decideReq(id, ok) {
+  const r = S.requests.find(x => x.id === id);
+  r.status = ok ? 'approved' : 'declined';
+  if (ok && r.type.startsWith('want-')) {
+    const k = r.type === 'want-pager' ? 'pager' : 'transfer', v = slot(r.date);
+    r.undo = [{k, old: v[k]}]; v[k] = r.by;
+    r.applied = `${k}: ${r.undo[0].old || '—'} → ${r.by}`;
+    if (r.date === S.date) applySchedule(true);
+  }
+  logSched(`${shortDate(r.date)}: ${r.by}'s request ${ok ? 'approved' : 'declined'}${r.applied ? ' — ' + r.applied : ''}`);
+  save();
+}
+function undoReq(id) {
+  const r = S.requests.find(x => x.id === id);
+  if (!confirm('Undo this change?')) return;
+  (r.undo || []).forEach(c => { slot(r.date)[c.k] = c.old; });
+  r.status = 'declined'; r.undo = null;
+  logSched(`${shortDate(r.date)}: undid ${r.type === 'cover' ? r.coverer + ' covering ' + r.by : r.by + "'s request"}`);
+  if (r.date === S.date) applySchedule(true);
+  save();
+}
+
+// Set today's pager / transfer (and anyone covered for rounding) on the board's team.
+function applySchedule(quiet) {
+  S.team.forEach(d => { d.base ||= d.name; d.name = d.base; });
+  // coverage: someone not already on the team takes the covered doctor's column for the day
+  S.requests.filter(r => r.date === S.date && r.type === 'cover' && r.status === 'applied').forEach(r => {
+    const d = S.team.find(d => sameDoc(d.base, r.by));
+    if (d && !S.team.some(x => sameDoc(x.name, r.coverer))) d.name = r.coverer;
+  });
+  const v = S.schedule[S.date];
+  const missing = [];
+  if (v && (v.pager || v.transfer)) {
+    S.team.forEach(d => { d.role = 'rounder'; });
+    ['pager', 'transfer'].forEach(k => {
+      if (!v[k]) return;
+      const d = S.team.find(d => sameDoc(d.name, v[k])) || S.team.find(d => sameDoc(d.base, v[k]));
+      if (d) d.role = k; else missing.push(`${v[k]} (${k})`);
+    });
+  }
+  if (!quiet || missing.length) toast(!v ? 'Nothing scheduled for this day' : missing.length ? `Not on the team list: ${missing.join(', ')}` : `Today: ${v.pager || '—'} pager / ${v.transfer || '—'} transfer`);
+}
+
+/* ---------- night shift ---------- */
+function nightNameInputs(n, names = []) {
+  const keep = [...nightNames.querySelectorAll('input')].map(i => i.value);
+  nightNames.innerHTML = Array.from({length: n}, (_, i) =>
+    `<label>${n > 1 ? `Night hospitalist ${i + 1}` : 'Name of the hospitalist starting the night shift'}</label>
+     <input data-nn value="${esc(keep[i] ?? names[i] ?? '')}" placeholder="e.g. Dr. Lopez" style="margin-bottom:6px">`).join('');
+}
+function openNight() {
+  const ns = S.nightShift;
+  nightCount.value = ns ? ns.admitters.length : 1;
+  nightNames.innerHTML = '';
+  nightNameInputs(+nightCount.value, ns ? ns.admitters : []);
+  nightTo.innerHTML = S.team.map(d => `<label><input type="checkbox" data-to="${d.id}" ${d.night !== false ? 'checked' : ''}> ${esc(d.name)}</label>`).join('');
+  nightGo.textContent = ns ? 'Save' : 'Start night shift';
+  nightUndo.classList.toggle('hidden', !ns);
+  nightDlg.showModal();
+  const first = nightNames.querySelector('input'); if (first && !first.value) first.focus();
+}
+nightCount.onchange = () => nightNameInputs(+nightCount.value);
+nightGo.onclick = () => {
+  const admitters = [...nightNames.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
+  if (!admitters.length) { toast('Enter the night hospitalist\'s name'); nightNames.querySelector('input').focus(); return; }
+  const to = [...nightTo.querySelectorAll('[data-to]')];
+  if (!to.some(c => c.checked)) return toast('Check at least one doctor to receive night admissions');
+  to.forEach(c => { S.team.find(d => d.id === c.dataset.to).night = c.checked; });
+  const starting = !S.nightShift;
+  S.nightShift = {start: starting ? Date.now() : S.nightShift.start, admitters,
+    current: admitters.includes((S.nightShift || {}).current) ? S.nightShift.current : admitters[0]};
+  if (starting) S.nightLastDocId = null;
+  nightDlg.close(); save(); go('board');
+  toast(starting ? `🌙 Night shift started by ${admitters.join(', ')}` : 'Night shift updated');
+};
+nightUndo.onclick = () => {
+  if (S.admits.some(a => a.night) && !confirm('Night admissions already exist. They will stay on the board but the black frame and night rotation will be turned off. Cancel the night shift?')) return;
+  S.nightShift = null; nightDlg.close(); save();
+};
+function renderNightHeader() {
+  const ns = S.nightShift;
+  nightBtn.classList.toggle('on', !!ns);
+  nightBtn.textContent = ns ? `🌙 Night: ${ns.admitters.join(', ')}` : '🌙 Start night shift';
+  admitterPick.innerHTML = ns && ns.admitters.length > 1
+    ? `<select title="Who is admitting right now" onchange="S.nightShift.current=this.value;persist()">${ns.admitters.map(n => `<option ${n === ns.current ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>` : '';
+}
+
+/* ---------- skips ("X" boxes) ---------- */
+// Admissions and used skips in the order they happened; pending skips at the bottom.
+// Box-by-box layout of one column. Admissions stay in the box they were typed into;
+// everything else (transfers, skips) fills the first free box in time order. Sparse array.
+function columnLayout(docId) {
+  const grid = [];
+  const place = (e, want) => { let i = want >= 0 ? want : 0; while (grid[i]) i++; grid[i] = e; };
+  const mine = S.admits.filter(a => a.docId === docId);
+  mine.filter(a => a.slot != null).forEach(a => place(a, a.slot));
+  [...mine.filter(a => a.slot == null), ...S.skips.filter(s => s.docId === docId && s.used)]
+    .sort((a, b) => (a.usedTs || a.ts) - (b.usedTs || b.ts)).forEach(e => place(e));
+  pendingSkips(docId).forEach(e => place(e));
+  return grid;
+}
+
+let skipDocId = null;
+function openSkip(id) {
+  skipDocId = id;
+  const isNext = (rotation(1)[0] || {}).id === id;
+  skipTitle.textContent = `✕ Skip ${docName(id)}`;
+  skipSub.textContent = isNext
+    ? `${docName(id)} is next up. They get an X now and the next admission goes to the following doctor.`
+    : `${docName(id)} will get an X and be passed over the next time their turn comes.`;
+  skipOther.value = '';
+  skipDlg.showModal();
+}
+skipDlg.addEventListener('click', e => {
+  const b = e.target.closest('button[data-r]'); if (!b) return;
+  const reason = b.dataset.r || skipOther.value.trim() || 'Skipped';
+  const s = {id: uid(), docId: skipDocId, reason, ts: Date.now(), used: false};
+  S.skips.push(s);
+  // Skipping the doctor who is up right now takes effect immediately.
+  const w = walk(1);
+  if (w.passed.some(p => p.id === s.id) || (w.out[0] || {}).id === skipDocId) {
+    s.used = true; s.usedTs = Date.now();
+    S[ptr()] = skipDocId;
+  }
+  skipDlg.close(); save();
+  toast(`${docName(skipDocId)}: ${s.used ? 'skipped' : 'will be skipped on their turn'}`);
+});
+function removeSkip(id) {
+  const s = S.skips.find(s => s.id === id);
+  if (!confirm(`Remove the X for ${docName(s.docId)}${s.used ? ' (the rotation will not move back)' : ''}?`)) return;
+  S.skips = S.skips.filter(x => x.id !== id); save();
+}
+
+/* ---------- paste → fields ---------- */
+const titleCase = s => s.toLowerCase().replace(/\b([a-z])/g, c => c.toUpperCase());
+function parseMessage(raw) {
+  let t = ' ' + raw.replace(/\s+/g, ' ').trim() + ' ';
+  const out = {};
+  const take = (re, key, fmt = v => v.trim()) => {
+    const m = t.match(re);
+    if (!m) return;
+    if (!out[key]) out[key] = fmt(m[1], m);
+    t = t.replace(m[0], ' | ');
+  };
+  // labeled pieces first
+  take(/\b(?:mrn|mr\s*#|mr|fin|med(?:ical)?\s*rec(?:ord)?\s*(?:#|no\.?|number)?)\s*[:#.\-]?\s*([A-Z]?\d{4,12})\b/i, 'mrn');
+  take(/\b(?:e[rd]\s*)?(?:dr|doc(?:tor)?|provider|attending|md)\b\.?\s*(?:is|:|-)?\s*(?:dr\.?\s*)?([A-Z][a-zA-Z'\-]+)(?=\s*(?:\(?\s*e[rd]\b|$|[,;.|]))/, 'erdoc', v => 'Dr. ' + v);
+  take(/\b(?:e[rd]\s*)?(?:dr|doc(?:tor)?|provider|attending)\b\.?\s*[:\-]?\s*(?:dr\.?\s*)?([A-Z][a-zA-Z'\-]+)/i, 'erdoc', v => 'Dr. ' + titleCase(v));
+  take(/\b(?:room|rm|bed|e[rd]\s*(?:bed|room|rm)|hall(?:way)?|pod)\s*[#:\-]?\s*([A-Z]{0,3}\s?-?\d{1,4}[A-Z]?)\b/i, 'room', v => v.replace(/\s+/g, ''));
+  take(/\b(e[rd]\s*-?\s*\d{1,3}[A-Z]?)\b/i, 'room', v => v.toUpperCase().replace(/\s+/g, ''));
+  take(/\bage\s*[:\-]?\s*(\d{1,3})\b/i, 'age');
+  take(/\b(\d{1,3})\s*(?:-\s*)?(?:y\/?o|y\.o\.?|yrs?(?:\s*old)?|years?(?:\s*old)?|yof|yom|y\s*[fm]\b|[fm]\b|y\b)\s*(f(?:emale)?\b|m(?:ale)?\b)?/i, 'age',
+    (v, m) => { const sx = (m[0].match(/(?:yo|y|\d)\s*([fm])(?:emale|ale)?\b|\b(female|male)\b/i) || []); const s = (sx[1] || sx[2] || '')[0]; return v + (s ? ' ' + s.toUpperCase() : ''); });
+  take(/\b(female|male)\b/i, 'sex');
+  if (out.sex && out.age && !/[FM]$/.test(out.age)) out.age += ' ' + out.sex[0].toUpperCase();
+  delete out.sex;
+  take(/(?:^|[|,;.]\s*)([A-Za-z\/& ]{2,30}?)\s+(?:consulted|aware|on board|following|accepted|to see)\b/i, 'consults', v => v.trim());
+  take(/\b(?:consults?|consulted|consulting|called|spoke (?:to|with))\b\s*[:\-]?\s*([^|;.\n]+?)(?=\s*(?:\||;|\.|$))/i, 'consults');
+  take(/\bfrom\s+([A-Z][\w .'\-]*?(?:hospital|medical center|med ctr|mc|regional|memorial|clinic|er|ed|snf|nursing home|rehab))\b/i, 'facility');
+  take(/\b(icu|micu|step\s*-?down|pcu|tele(?:metry)?|obs(?:ervation)?|med\s*\/?\s*surg)\b/i, 'loc', v => {
+    v = v.toLowerCase(); return /icu/.test(v) ? 'ICU' : /step|pcu/.test(v) ? 'Stepdown' : /tele/.test(v) ? 'Tele' : /obs/.test(v) ? 'Obs' : 'Med/Surg'; });
+  take(/\b(?:name|pt|patient)\s*[:\-]\s*([A-Za-z][A-Za-z' .\-]+?)(?=\s*(?:\||,|;|\d|$))/i, 'name', titleCase);
+  take(/\b(?:dx|diagnosis|admit(?:ting)?\s*(?:dx|for|diagnosis)|reason(?:\s*for\s*admi(?:t|ssion))?|c\/o|complain(?:s|ing)? of)\s*[:\-]?\s*([^|;\n]+?)(?=\s*(?:\||;|,\s*(?:pmh|hx|history)\b|$))/i, 'dx');
+  // unlabeled name at the start: the words before the first comma / number
+  if (!out.name) {
+    t = t.replace(/^\s*(?:(?:new\s+)?admi(?:t|ssion)(?:\s+request)?|hi|hello|hey|please|pls)\b[\s:,\-!]*/i, ' ');
+    // first chunk (at the start or right after something already pulled out) that looks like a name
+    const m = t.match(/(?:^|\|)[\s.,:;\-]*([A-Za-z][A-Za-z'.\-]*(?:\s+[A-Za-z][A-Za-z'.\-]*){0,3})\s*(?=\||,|;|\d|$)/);
+    if (m && !/\b(with|for|has|is|pt|patient|and)\b/i.test(m[1])) { out.name = titleCase(m[1]); t = t.replace(m[0], ' | '); }
+  }
+  // unlabeled MRN: a long number that is not a phone number
+  if (!out.mrn) take(/(?<![\d\-()])(\d{5,12})(?![\d\-])/, 'mrn');
+  // whatever is left is the reason for admission
+  const rest = t.split(/[|,;\n]+/).map(s => s.replace(/^\s*(?:with|w\/|for|here for|admit(?:ted)? for|pmh\b.*?)\s+/i, '').trim())
+    .filter(s => /[a-z]{2}/i.test(s) && !/^(?:thanks?|thank you|please|pls|admit|admission|new admit|to|and|the|er|ed|er bed|ed bed)$/i.test(s));
+  if (!out.dx && rest.length) out.dx = rest.shift();
+  if (rest.length) out.notes = rest.join(', ');
+  for (const k in out) out[k] = String(out[k]).replace(/^[\s,.|:\-]+|[\s,.|:\-]+$/g, '');
+  if (out.dx) out.dx = out.dx.charAt(0).toUpperCase() + out.dx.slice(1);
+  return out;
+}
+
+document.querySelectorAll('textarea.paste[data-fill]').forEach(ta => {
+  const form = document.getElementById(ta.dataset.fill);
+  let timer;
+  const fill = () => {
+    const p = parseMessage(ta.value);
+    form.querySelectorAll('.autofilled').forEach(el => { el.classList.remove('autofilled'); if (!(el.name in p)) el.value = el.tagName === 'SELECT' ? el.options[0].value : ''; });
+    Object.entries(p).forEach(([k, v]) => {
+      const el = form.elements[k]; if (!el || !v) return;
+      if (el.tagName === 'SELECT') { if (![...el.options].some(o => o.value === v)) return; }
+      el.value = v; el.classList.add('autofilled');
+    });
+  };
+  ta.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(fill, 250); });
+  form.addEventListener('input', e => { if (e.target !== ta) e.target.classList.remove('autofilled'); });
+  form.addEventListener('reset', () => form.querySelectorAll('.autofilled').forEach(el => el.classList.remove('autofilled')));
+});
+
+/* ---------- end-of-day print sheet ---------- */
+function printDay() {
+  const team = S.team;
+  const cols = team.map(d => columnLayout(d.id).map(e => e && (e.reason === undefined || e.used) ? e : null));
+  const off = team.map((d, j) => d.role !== 'rounder' && !cols[j].some(Boolean));
+  const rows = Math.max(8, ...cols.map(c => c.length));
+  const dateStr = sheetRange(true);
+  const cell = e => e.reason !== undefined
+    ? `<td class="x">✕ SKIPPED<br><span style="font-weight:400">${esc(e.reason)}<br>${hhmm(e.usedTs)}</span></td>`
+    : `<td><div class="cell"><b>${e.night ? '🌙 ' : ''}${esc(e.name)}</b>${e.source === 'transfer' ? ' (XFER)' : ''}<br>
+        <span class="lbl">MR#</span> ${esc(e.mrn)} &nbsp;<span class="lbl">RM#</span> ${esc(e.room)} &nbsp;<span class="lbl">Age</span> ${esc(e.age)}<br>
+        <span class="lbl">DX:</span> ${esc(e.dx)}<br><span class="lbl">Time of call:</span> ${hhmm(e.ts)}</div></td>`;
+  let grid = `<tr>${team.map(d => `<th>${esc(d.name)}<br><span style="font-weight:400">${d.role !== 'rounder' ? (d.role === 'pager' ? 'Pager · ' : 'Transfer · ') : ''}${countFor(d.id)} admits${S.admits.some(a => a.docId === d.id && a.night) ? ' (🌙' + S.admits.filter(a => a.docId === d.id && a.night).length + ')' : ''}</span></th>`).join('')}</tr>`;
+  const framed = isNight();
+  const ends = cols.map(c => framed ? dayEnd(c) : 0);
+  const frame = (j, i, html) => {
+    if (i >= ends[j]) return html;
+    const st = `border-left:3px solid #000;border-right:3px solid #000;${i === 0 ? 'border-top:3px solid #000;' : ''}${i === ends[j] - 1 ? 'border-bottom:3px solid #000;' : ''}`;
+    return html.replace(/^<td( class="[^"]*")?/, m => m + ` style="${st}"`);
+  };
+  for (let i = 0; i < rows; i++)
+    grid += `<tr>${team.map((d, j) => off[j] ? (i === 0 ? `<td class="off" rowspan="${rows}"></td>` : '') : frame(j, i, cols[j][i] ? cell(cols[j][i]) : '<td><div class="cell"></div></td>')).join('')}</tr>`;
+  const log = [...S.admits].sort((a, b) => a.ts - b.ts);
+  const skipsUsed = S.skips.filter(s => s.used).length;
+  printSheet.innerHTML = `
+    <h1>Hospitalist Admissions: ${dateStr}</h1>
+    <div class="ps-sub">Pager: ${team.filter(d => d.role === 'pager').map(d => esc(d.name)).join(', ') || '—'} &nbsp;·&nbsp; Transfer: ${team.filter(d => d.role === 'transfer').map(d => esc(d.name)).join(', ') || '—'}
+      ${S.nightShift ? `&nbsp;·&nbsp; Night shift: ${S.nightShift.admitters.map(esc).join(', ')} (from ${hhmm(S.nightShift.start)})` : ''}
+      ${S.admits.some(a => a.night) ? '&nbsp;·&nbsp; Thick black frame = admitted before the night shift' : ''}
+      &nbsp;·&nbsp; Total admissions: ${S.admits.length} (ER ${S.admits.filter(a => a.source !== 'transfer').length}, transfers ${S.admits.filter(a => a.source === 'transfer').length}) &nbsp;·&nbsp; Skips: ${skipsUsed}</div>
+    <table>${grid}</table>
+    <div class="pb"></div>
+    <h2>Admission log</h2>
+    <table class="log"><tr><th style="width:6%">Time</th><th style="width:10%">Doctor</th><th style="width:14%">Patient</th><th style="width:8%">MR#</th><th style="width:5%">Age</th><th style="width:6%">Room</th><th>Dx</th><th style="width:7%">Source</th><th style="width:25%">Consults / notes</th></tr>
+      ${log.map(a => `<tr><td>${hhmm(a.ts)}</td><td>${esc(docName(a.docId))}</td><td>${esc(a.name)}</td><td>${esc(a.mrn)}</td><td>${esc(a.age)}</td><td>${esc(a.room)}</td><td>${esc(a.dx)}</td><td>${a.source === 'transfer' ? 'Transfer' : 'ER'}${a.night ? ' 🌙' : ''}</td><td>${esc(a.notes)}</td></tr>`).join('') || '<tr><td colspan="10">None</td></tr>'}</table>
+    ${S.transfers.length ? `<h2>Transfer requests</h2>
+    <table class="log"><tr><th style="width:6%">Called</th><th style="width:14%">Patient</th><th style="width:5%">Age</th><th style="width:15%">From</th><th>Coming for</th><th style="width:18%">Consults</th><th style="width:12%">Decision</th></tr>
+      ${S.transfers.map(t => `<tr><td>${hhmm(t.ts)}</td><td>${esc(t.name)}</td><td>${esc(t.age)}</td><td>${esc(t.facility)}${t.sender ? ' / ' + esc(t.sender) : ''}</td><td>${esc(t.dx)}</td><td>${esc(t.consults)}</td><td>${t.status}${t.admitId ? ' → ' + esc(docName((S.admits.find(a => a.id === t.admitId) || {}).docId)) : ''}</td></tr>`).join('')}</table>` : ''}
+    ${skipsUsed ? `<h2>Skips</h2><table class="log"><tr><th style="width:8%">Time</th><th style="width:15%">Doctor</th><th>Reason</th></tr>
+      ${S.skips.filter(s => s.used).sort((a, b) => a.usedTs - b.usedTs).map(s => `<tr><td>${hhmm(s.usedTs)}</td><td>${esc(docName(s.docId))}</td><td>${esc(s.reason)}</td></tr>`).join('')}</table>` : ''}
+    <div class="ps-sub" style="margin-top:8px">Printed ${new Date().toLocaleString()}</div>`;
+  document.body.classList.add('sheet');
+  window.print();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('sheet'));
+function resend(id) { showMessage(S.admits.find(a => a.id === id)); }
+
+function reassign(id) {
+  const a = S.admits.find(a => a.id === id);
+  const opts = S.team.map((d, i) => `${i + 1}. ${d.name}`).join('\n');
+  const pick = prompt(`Reassign ${a.name} (now ${docName(a.docId)}) to:\n${opts}\n\nEnter a number:`);
+  const d = S.team[parseInt(pick) - 1];
+  if (!d) return;
+  a.docId = d.id; delete a.slot; save(); showMessage(a);
+}
+
+// Deleting the most recent admission also puts the rotation (and any skips it used) back.
+function deleteAdmit(id) {
+  const a = S.admits.find(a => a.id === id); if (!a) return;
+  const la = S.lastAction;
+  if (la && la.admitId === id) {
+    S.skips.forEach(s => { if ((la.skipIds || []).includes(s.id)) { s.used = false; delete s.usedTs; } });
+    S[la.key || 'lastDocId'] = la.prevLast; S.lastAction = null;
+  }
+  S.admits = S.admits.filter(x => x.id !== id);
+  S.transfers.forEach(t => { if (t.admitId === id) t.admitId = null; });
+}
+
+copyBtn.onclick = async () => {
+  try { await navigator.clipboard.writeText(msgBody.textContent); toast('Copied, paste it into CareAware'); }
+  catch { const r = document.createRange(); r.selectNodeContents(msgBody); getSelection().removeAllRanges(); getSelection().addRange(r); toast('Selected, press ⌘C'); }
+};
+
+function setDoc(id, k, v) { const d = S.team.find(d => d.id === id); d[k] = v; if (k === 'name') d.base = v; save(); }
+function moveDoc(id, dir) { const i = S.team.findIndex(d => d.id === id), j = i + dir; if (j < 0 || j >= S.team.length) return; [S.team[i], S.team[j]] = [S.team[j], S.team[i]]; save(); }
+function removeDoc(id) { if (countFor(id)) return toast('This doctor has admissions. Reassign them first.'); if (confirm('Remove ' + docName(id) + '?')) { S.team = S.team.filter(d => d.id !== id); save(); } }
+addDoc.onclick = () => { S.team.push({id: uid(), name: 'Dr. ' + (S.team.length + 1), role: 'rounder', open: true}); save(); };
+shiftDate.onchange = () => { S.date = shiftDate.value; save(); };
+setInterval(() => {
+  if (S.date !== today() && staleCard.classList.contains('hidden') && !board.contains(document.activeElement)) render();
+}, 30e3);
+capInput.onchange = () => { S.cap = Math.max(0, parseInt(capInput.value) || 0); save(); };
+
+resetDay.onclick = () => {
+  if (!confirm('Clear all admissions and transfers for a new shift?')) return;
+  Object.assign(S, {date: today(), admits: [], transfers: [], skips: [], lastDocId: null, nightLastDocId: null, lastAction: null, nightShift: null});
+  S.team.forEach(d => d.open = true);
+  applySchedule(false);
+  save(); go('board');
+};
+
+loadDemo.onclick = () => {
+  if (S.admits.length && !confirm('Replace the current board with demo data?')) return;
+  const st = defaultState(); Object.assign(st, {schedule: S.schedule, requests: S.requests, schedLog: S.schedLog}); S = st;
+  const r = rounders(), t0 = Date.now() - 4 * 3600e3;
+  const demo = [['Test Patient One','100001','67','ER-4','CAP pneumonia'],['Test Patient Two','100002','54','ER-11','DKA'],
+    ['Test Patient Three','100003','81','ER-2','CHF exacerbation'],['Test Patient Four','100004','45','ER-7','Cellulitis LLE'],
+    ['Test Patient Five','100005','72','ER-9','Syncope'],['Test Patient Six','100006','38','ER-1','Pancreatitis'],
+    ['Test Patient Seven','100007','90','ER-5','UTI / AMS']];
+  demo.forEach((p, i) => {
+    const d = r[i % r.length];
+    S.admits.push({id: uid(), docId: d.id, name: p[0], mrn: p[1], age: p[2], room: p[3], dx: p[4], source: 'er', ts: t0 + i * 30 * 60e3, notes: i % 3 ? '' : 'Consults: Cardiology'});
+    S.lastDocId = d.id;
+  });
+  S.transfers.push({id: uid(), name: 'Test Transfer A', age: '63', facility: 'Outside Hospital', sender: 'Dr. OSH', dx: 'NSTEMI for cath', consults: 'Cardiology accepted', status: 'pending', ts: Date.now() - 20 * 60e3},
+                   {id: uid(), name: 'Test Transfer B', age: '58', facility: 'Community ED', sender: 'Dr. CED', dx: 'GI bleed, needs EGD', consults: 'GI aware', status: 'accepted', ts: Date.now() - 90 * 60e3, decidedTs: Date.now() - 80 * 60e3});
+  save(); go('board'); toast('Demo data loaded');
+};
+
+document.getElementById('csvBtn').onclick = () => {
+  const cols = ['time','doctor','name','mrn','age','room','dx','source','erdoc','consults','notes'];
+  const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = [cols.join(',')].concat(S.admits.map(a => [hhmm(a.ts), docName(a.docId), a.name, a.mrn, a.age, a.room, a.dx, a.source, a.erdoc, a.consults, a.notes].map(q).join(','))).join('\n');
+  const url = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+  Object.assign(document.createElement('a'), {href: url, download: `admits-${S.date}.csv`}).click();
+};
+
+if (rolledOver) applySchedule(true);
+render();
+// Opening the page with #demo (e.g. the GitHub Pages link) shows a filled-in board.
+if (location.hash === '#demo' && !S.admits.length) loadDemo.onclick();
+try { const t = sessionStorage.getItem('admitBoard.tab'); go(document.getElementById('v-' + t) ? t : 'board'); } catch { go('board'); }
+</script>
+</body>
+</html>
