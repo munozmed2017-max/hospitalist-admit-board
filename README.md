@@ -1,5 +1,7 @@
 # Hospitalist Admit Board
 
+**[▶ Live demo](https://munozmed2017-max.github.io/hospitalist-admit-board/#demo)**
+
 A digital version of the paper admission sheet a hospitalist group uses to hand out ER admissions and transfers across a 24-hour shift.
 
 ![Admit board with demo data](screenshots/board.png)
@@ -43,7 +45,7 @@ Our group has 8 hospitalists rounding each morning. One of them carries the **pa
 
 ## Try it
 
-- **Online:** open the GitHub Pages link with `#demo` at the end of the address to see the board with sample data.
+- **Online:** [**Live demo with sample data**](https://munozmed2017-max.github.io/hospitalist-admit-board/#demo). Drop the `#demo` for an empty board.
 - **Locally:** download `index.html` and open it in any browser. There's nothing to install. To load sample data, go to *Team & shift → Load demo data*.
 
 Everything is one HTML file of plain HTML, CSS and JavaScript, with no libraries. Data is saved in the browser's `localStorage`.
